@@ -351,7 +351,7 @@ function syncToSheets(record) {
   var timeStr = (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
 
   var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + config.sheetId +
-    '/values/Sheet1!A1:F1:append?valueInputOption=USER_ENTERED&key=' + config.apiKey;
+    '/values/Sheet1!A1:F1/append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS&key=' + config.apiKey;
 
   fetch(url, {
     method: 'POST',
