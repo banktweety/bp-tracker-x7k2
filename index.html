@@ -348,12 +348,13 @@ function syncToSheets(record) {
   syncDiv.style.display = 'flex';
   syncDot.className = 'sync-dot';
   syncText.textContent = 'กำลัง sync...';
+  console.log('syncToSheets called', record);
 
   var d = new Date(record.dt);
   var dateStr = d.getDate() + '/' + (d.getMonth()+1) + '/' + (d.getFullYear()+543);
   var timeStr = (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
 
-  var url = 'https://script.google.com/macros/s/AKfycbxZlpGzIe1OzCOrg1jqBZvSJSOs8rOVTM8NNTdEpUnYMy5PEqc81B_y154evbmUeHR6Dw/exec';
+  var url = 'https://script.google.com/macros/s/AKfycbxubp9iHOKVACrJaCVQu4r5TrsdtVG_62OC15hM826jj7TBXV2LrKYSaGa2uvpLCBst3Q/exec';
 
   fetch(url, {
     method: 'POST',
@@ -364,10 +365,12 @@ function syncToSheets(record) {
   .then(function() {
     syncDot.className = 'sync-dot ok';
     syncText.textContent = 'Sync สำเร็จ ✓';
+    console.log('Sync success');
   })
   .catch(function(err) {
     syncDot.className = 'sync-dot err';
     syncText.textContent = 'Sync ไม่สำเร็จ: ' + (err.message || 'unknown');
+    console.log('Sync error:', err);
   });
 }
 
