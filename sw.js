@@ -1,27 +1,10 @@
-// Service Worker v5 - bypass all external requests
-const CACHE_NAME = 'bp-tracker-v5';
-
-self.addEventListener('install', function(e) {
-  self.skipWaiting();
-});
-
+// Minimal service worker - do nothing
+self.addEventListener('install', function() { self.skipWaiting(); });
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.map(function(key) { return caches.delete(key); }));
-    })
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', function(e) {
-  // ให้ทุก request ผ่านตรงๆ ไม่ intercept เลย
-  if (!e.request.url.startsWith(self.location.origin)) {
-    return;
-  }
-  e.respondWith(
-    fetch(e.request).catch(function() {
-      return caches.match(e.request);
-    })
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    }).then(function() { return self.clients.claim(); })
   );
 });
+// No fetch handler - let everything pass through normally

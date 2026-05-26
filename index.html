@@ -262,8 +262,11 @@ var bpChart = null;
 window.addEventListener('load', function() {
   setDefaultDateTime();
   loadSettings();
+  // Unregister all service workers to prevent fetch blocking
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(reg) { reg.unregister(); });
+    });
   }
 });
 
