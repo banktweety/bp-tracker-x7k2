@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BP Tracker">
+<meta name="theme-color" content="#e24b4a">
+<title>BP Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f2f2f7; color: #1c1c1e; min-height: 100vh; }
+
+  /* Header */
+  .header { background: #fff; padding: 12px 16px 8px; border-bottom: 0.5px solid #e5e5ea; position: sticky; top: 0; z-index: 10; }
+  .header h1 { font-size: 20px; font-weight: 600; color: #1c1c1e; }
+  .header-sub { font-size: 12px; color: #8e8e93; margin-top: 1px; }
+
+  /* Nav tabs */
+  .nav { background: #fff; display: flex; border-top: 0.5px solid #e5e5ea; position: fixed; bottom: 0; left: 0; right: 0; padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+  .nav-btn { flex: 1; padding: 10px 4px 8px; border: none; background: none; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #8e8e93; cursor: pointer; }
+  .nav-btn.active { color: #e24b4a; }
+  .nav-btn svg { width: 24px; height: 24px; }
+
+  /* Pages */
+  .page { display: none; padding: 16px 16px 80px; }
+  .page.active { display: block; }
+
+  /* Status card */
+  .status-card { border-radius: 16px; padding: 16px; margin-bottom: 14px; text-align: center; transition: background 0.3s; }
+  .status-normal { background: #d1f2d1; }
+  .status-elevated { background: #ffeeba; }
+  .status-high1 { background: #ffd5b8; }
+  .status-high2 { background: #f8d7da; }
+  .status-crisis { background: #f5c6cb; }
+  .status-default { background: #e9e9ef; }
+  .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .status-normal .status-badge { background: #28a745; color: #fff; }
+  .status-elevated .status-badge { background: #ffc107; color: #333; }
+  .status-high1 .status-badge { background: #fd7e14; color: #fff; }
+  .status-high2 .status-badge { background: #dc3545; color: #fff; }
+  .status-crisis .status-badge { background: #721c24; color: #fff; }
+  .status-default .status-badge { background: #8e8e93; color: #fff; }
+  .status-value { font-size: 36px; font-weight: 700; color: #1c1c1e; line-height: 1; }
+  .status-unit { font-size: 13px; color: #636366; margin-top: 4px; }
+  .crisis-msg { font-size: 12px; color: #721c24; font-weight: 600; margin-top: 6px; }
+
+  /* Input cards */
+  .input-card { background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .input-card-label { font-size: 12px; color: #8e8e93; font-weight: 500; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .bp-row { display: flex; align-items: center; gap: 8px; }
+  .bp-col { flex: 1; text-align: center; }
+  .bp-col label { font-size: 11px; color: #8e8e93; display: block; margin-bottom: 4px; }
+  .num-input { width: 100%; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 10px 4px; font-size: 26px; font-weight: 600; text-align: center; background: #f2f2f7; color: #1c1c1e; -moz-appearance: textfield; appearance: textfield; }
+  .num-input::-webkit-outer-spin-button, .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .num-input:focus { outline: none; border-color: #e24b4a; background: #fff; }
+  .bp-slash { font-size: 28px; color: #c7c7cc; }
+  .hr-row { display: flex; align-items: center; gap: 12px; }
+  .hr-input-wrap { display: flex; align-items: center; gap: 8px; }
+  .hr-input { width: 100px; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 10px 8px; font-size: 22px; font-weight: 600; text-align: center; background: #f2f2f7; color: #1c1c1e; -moz-appearance: textfield; appearance: textfield; }
+  .hr-input::-webkit-outer-spin-button, .hr-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .hr-input:focus { outline: none; border-color: #e24b4a; background: #fff; }
+  .hr-unit { font-size: 13px; color: #8e8e93; }
+  .dt-input { width: 100%; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 10px 12px; font-size: 15px; background: #f2f2f7; color: #1c1c1e; }
+  .dt-input:focus { outline: none; border-color: #e24b4a; background: #fff; }
+
+  /* Save button */
+  .save-btn { width: 100%; background: #e24b4a; color: #fff; border: none; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+  .save-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .save-btn.loading { opacity: 0.7; pointer-events: none; }
+  .msg { text-align: center; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .msg.ok { color: #28a745; }
+  .msg.err { color: #e24b4a; }
+
+  /* Sync badge */
+  .sync-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #8e8e93; margin-top: 8px; justify-content: center; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #8e8e93; }
+  .sync-dot.ok { background: #28a745; }
+  .sync-dot.err { background: #e24b4a; }
+
+  /* History page */
+  .filter-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+  .filter-chip { border: 1.5px solid #e5e5ea; background: #fff; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #636366; cursor: pointer; white-space: nowrap; }
+  .filter-chip.active { background: #e24b4a; border-color: #e24b4a; color: #fff; font-weight: 600; }
+  .chart-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .chart-label { font-size: 12px; color: #8e8e93; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .record-item { background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+  .record-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .dot-normal { background: #28a745; }
+  .dot-elevated { background: #ffc107; }
+  .dot-high1 { background: #fd7e14; }
+  .dot-high2 { background: #dc3545; }
+  .dot-crisis { background: #721c24; }
+  .record-info { flex: 1; }
+  .record-bp { font-size: 18px; font-weight: 600; }
+  .record-dt { font-size: 12px; color: #8e8e93; margin-top: 2px; }
+  .record-hr { font-size: 13px; color: #636366; display: flex; align-items: center; gap: 4px; }
+  .heart-icon { color: #e24b4a; font-size: 14px; }
+  .empty-state { text-align: center; color: #8e8e93; font-size: 14px; padding: 40px 20px; }
+
+  /* Settings page */
+  .settings-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  .settings-title { font-size: 13px; color: #8e8e93; font-weight: 500; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .settings-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .settings-row label { font-size: 14px; color: #1c1c1e; font-weight: 500; }
+  .settings-input { width: 100%; border: 1.5px solid #e5e5ea; border-radius: 10px; padding: 10px 12px; font-size: 14px; background: #f2f2f7; color: #1c1c1e; }
+  .settings-input:focus { outline: none; border-color: #e24b4a; }
+  .settings-btn { width: 100%; background: #1c1c1e; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .settings-btn:active { opacity: 0.8; }
+  .settings-hint { font-size: 12px; color: #8e8e93; margin-top: 6px; line-height: 1.5; }
+  .guide-step { display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start; }
+  .guide-num { width: 24px; height: 24px; border-radius: 50%; background: #e24b4a; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .guide-text { font-size: 13px; color: #3a3a3c; line-height: 1.5; }
+  .guide-text strong { color: #1c1c1e; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>❤️ BP Tracker</h1>
+  <div class="header-sub" id="header-sub">ติดตามความดันโลหิตของคุณ</div>
+</div>
+
+<!-- PAGE: LOG -->
+<div class="page active" id="page-log">
+
+  <div class="status-card status-default" id="status-card">
+    <div class="status-badge" id="status-badge">กรอกค่าเพื่อดูสถานะ</div>
+    <div class="status-value" id="status-value">—/—</div>
+    <div class="status-unit">Systolic / Diastolic (mmHg)</div>
+    <div class="crisis-msg" id="crisis-msg" style="display:none">⚠️ ระดับวิกฤต กรุณาพบแพทย์ทันที</div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-card-label">ความดันโลหิต</div>
+    <div class="bp-row">
+      <div class="bp-col">
+        <label>Systolic</label>
+        <input type="number" class="num-input" id="sys" placeholder="120" min="60" max="250" inputmode="numeric">
+      </div>
+      <div class="bp-slash">/</div>
+      <div class="bp-col">
+        <label>Diastolic</label>
+        <input type="number" class="num-input" id="dia" placeholder="80" min="40" max="150" inputmode="numeric">
+      </div>
+    </div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-card-label">Heart rate</div>
+    <div class="hr-row">
+      <input type="number" class="hr-input" id="hr" placeholder="72" min="30" max="200" inputmode="numeric">
+      <span class="hr-unit">bpm</span>
+    </div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-card-label">วันและเวลา</div>
+    <input type="datetime-local" class="dt-input" id="dt">
+  </div>
+
+  <button class="save-btn" id="save-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    บันทึก
+  </button>
+  <div class="msg" id="save-msg"></div>
+  <div class="sync-status" id="sync-status" style="display:none">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-text"></span>
+  </div>
+</div>
+
+<!-- PAGE: HISTORY -->
+<div class="page" id="page-history">
+  <div class="filter-row">
+    <button class="filter-chip active" onclick="setFilter(7,this)">7 วัน</button>
+    <button class="filter-chip" onclick="setFilter(30,this)">30 วัน</button>
+    <button class="filter-chip" onclick="setFilter(90,this)">3 เดือน</button>
+    <button class="filter-chip" onclick="setFilter(9999,this)">ทั้งหมด</button>
+  </div>
+  <div class="chart-card">
+    <div class="chart-label">กราฟความดัน (mmHg)</div>
+    <canvas id="bpChart" height="130"></canvas>
+  </div>
+  <div id="records-list"></div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="settings-card">
+    <div class="settings-title">เชื่อมต่อ Google Sheets</div>
+    <div class="settings-row">
+      <label>Spreadsheet ID</label>
+      <input type="text" class="settings-input" id="sheet-id" placeholder="วาง Spreadsheet ID ที่นี่">
+      <div class="settings-hint">เปิด Google Sheets → URL จะมีรหัสยาวๆ อยู่กลาง URL คัดลอกมาวางที่นี่</div>
+    </div>
+    <div class="settings-row">
+      <label>API Key</label>
+      <input type="text" class="settings-input" id="api-key" placeholder="วาง API Key ที่นี่">
+      <div class="settings-hint">ได้จาก Google Cloud Console → APIs & Services → Credentials</div>
+    </div>
+    <button class="settings-btn" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+    <div class="msg" id="settings-msg" style="margin-top:10px"></div>
+  </div>
+
+  <div class="settings-card">
+    <div class="settings-title">วิธีตั้งค่า Google Sheets</div>
+    <div class="guide-step">
+      <div class="guide-num">1</div>
+      <div class="guide-text">ไปที่ <strong>Google Cloud Console</strong> (console.cloud.google.com) สร้าง project ใหม่</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-num">2</div>
+      <div class="guide-text">เปิด <strong>Google Sheets API</strong> ใน APIs & Services → Library</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-num">3</div>
+      <div class="guide-text">สร้าง <strong>API Key</strong> ใน Credentials → Create Credentials</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-num">4</div>
+      <div class="guide-text">สร้าง <strong>Google Sheet</strong> ใหม่ คัดลอก ID จาก URL มาวางด้านบน</div>
+    </div>
+    <div class="guide-step">
+      <div class="guide-num">5</div>
+      <div class="guide-text">แถวแรกของ Sheet พิมพ์ header: <strong>Date | Time | Systolic | Diastolic | HeartRate | Status</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-log" onclick="showPage('log')">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    บันทึก
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    ประวัติ
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    ตั้งค่า
+  </button>
+</nav>
+
+<script>
+// ─── Config ───────────────────────────────────────────────
+var CONFIG_KEY = 'bp_config';
+var RECORDS_KEY = 'bp_records';
+
+var config = JSON.parse(localStorage.getItem(CONFIG_KEY) || '{"sheetId":"","apiKey":""}');
+var records = JSON.parse(localStorage.getItem(RECORDS_KEY) || '[]');
+var currentFilter = 7;
+var bpChart = null;
+
+// ─── Init ──────────────────────────────────────────────────
+window.addEventListener('load', function() {
+  setDefaultDateTime();
+  loadSettings();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+});
+
+function setDefaultDateTime() {
+  var now = new Date();
+  var local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  document.getElementById('dt').value = local.toISOString().slice(0, 16);
+}
+
+// ─── Status logic ──────────────────────────────────────────
+function getStatus(sys, dia) {
+  if (sys > 180 || dia > 120) return { label: 'วิกฤต', cls: 'status-crisis', dot: 'dot-crisis', crisis: true };
+  if (sys >= 140 || dia >= 90)  return { label: 'ความดันสูง ระดับ 2', cls: 'status-high2', dot: 'dot-high2', crisis: false };
+  if (sys >= 130 || dia >= 80)  return { label: 'ความดันสูง ระดับ 1', cls: 'status-high1', dot: 'dot-high1', crisis: false };
+  if (sys >= 120 && dia < 80)   return { label: 'ค่อนข้างสูง', cls: 'status-elevated', dot: 'dot-elevated', crisis: false };
+  return { label: 'ปกติ ✓', cls: 'status-normal', dot: 'dot-normal', crisis: false };
+}
+
+// ─── Live status update ────────────────────────────────────
+document.getElementById('sys').addEventListener('input', updateStatus);
+document.getElementById('dia').addEventListener('input', updateStatus);
+
+function updateStatus() {
+  var s = parseInt(document.getElementById('sys').value);
+  var d = parseInt(document.getElementById('dia').value);
+  var card = document.getElementById('status-card');
+  var badge = document.getElementById('status-badge');
+  var val = document.getElementById('status-value');
+  var crisis = document.getElementById('crisis-msg');
+  if (s && d) {
+    var st = getStatus(s, d);
+    card.className = 'status-card ' + st.cls;
+    badge.textContent = st.label;
+    val.textContent = s + '/' + d;
+    crisis.style.display = st.crisis ? 'block' : 'none';
+  } else {
+    card.className = 'status-card status-default';
+    badge.textContent = 'กรอกค่าเพื่อดูสถานะ';
+    val.textContent = '—/—';
+    crisis.style.display = 'none';
+  }
+}
+
+// ─── Save record ───────────────────────────────────────────
+document.getElementById('save-btn').addEventListener('click', function() {
+  var s = parseInt(document.getElementById('sys').value);
+  var d = parseInt(document.getElementById('dia').value);
+  var h = parseInt(document.getElementById('hr').value) || 0;
+  var dt = document.getElementById('dt').value;
+
+  if (!s || !d) { showMsg('save-msg', 'กรุณากรอกค่าความดัน', 'err'); return; }
+  if (!dt)      { showMsg('save-msg', 'กรุณาระบุวันและเวลา', 'err'); return; }
+  if (s < 60 || s > 250) { showMsg('save-msg', 'Systolic ควรอยู่ระหว่าง 60-250', 'err'); return; }
+  if (d < 40 || d > 150) { showMsg('save-msg', 'Diastolic ควรอยู่ระหว่าง 40-150', 'err'); return; }
+
+  var st = getStatus(s, d);
+  var record = { dt: dt, sys: s, dia: d, hr: h, status: st.label };
+  records.push(record);
+  records.sort(function(a, b) { return a.dt.localeCompare(b.dt); });
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(records));
+
+  document.getElementById('sys').value = '';
+  document.getElementById('dia').value = '';
+  document.getElementById('hr').value = '';
+  setDefaultDateTime();
+  updateStatus();
+  showMsg('save-msg', 'บันทึกสำเร็จ ✓', 'ok');
+
+  if (config.sheetId && config.apiKey) {
+    syncToSheets(record);
+  }
+});
+
+// ─── Sync to Google Sheets ─────────────────────────────────
+function syncToSheets(record) {
+  var syncDiv = document.getElementById('sync-status');
+  var syncDot = document.getElementById('sync-dot');
+  var syncText = document.getElementById('sync-text');
+  syncDiv.style.display = 'flex';
+  syncDot.className = 'sync-dot';
+  syncText.textContent = 'กำลัง sync...';
+
+  var d = new Date(record.dt);
+  var dateStr = d.getDate() + '/' + (d.getMonth()+1) + '/' + (d.getFullYear()+543);
+  var timeStr = (d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+
+  var url = 'https://sheets.googleapis.com/v4/spreadsheets/' + config.sheetId +
+    '/values/Sheet1!A1:F1:append?valueInputOption=USER_ENTERED&key=' + config.apiKey;
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[dateStr, timeStr, record.sys, record.dia, record.hr || '', record.status]] })
+  })
+  .then(function(r) {
+    if (r.ok) {
+      syncDot.className = 'sync-dot ok';
+      syncText.textContent = 'Sync สำเร็จ ✓';
+    } else {
+      throw new Error('API error');
+    }
+  })
+  .catch(function() {
+    syncDot.className = 'sync-dot err';
+    syncText.textContent = 'Sync ไม่สำเร็จ (ตรวจสอบ API Key)';
+  });
+}
+
+// ─── Page navigation ───────────────────────────────────────
+function showPage(p) {
+  ['log','history','settings'].forEach(function(n) {
+    document.getElementById('page-'+n).classList.remove('active');
+    document.getElementById('nav-'+n).classList.remove('active');
+  });
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  if (p === 'history') renderHistory();
+}
+
+// ─── History & chart ───────────────────────────────────────
+function setFilter(days, el) {
+  currentFilter = days;
+  document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - currentFilter);
+  var filtered = records.filter(function(r) {
+    return currentFilter >= 9999 || new Date(r.dt) >= cutoff;
+  });
+  renderChart(filtered);
+  renderList(filtered);
+}
+
+function renderChart(data) {
+  var ctx = document.getElementById('bpChart').getContext('2d');
+  var labels = data.map(function(r) {
+    var d = new Date(r.dt);
+    return (d.getDate())+'/'+(d.getMonth()+1)+' '+(d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+  });
+  if (bpChart) bpChart.destroy();
+  bpChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Systolic', data: data.map(function(r){return r.sys}), borderColor: '#e24b4a', backgroundColor: 'rgba(226,75,74,0.08)', tension: 0.3, pointRadius: 3, pointBackgroundColor: '#e24b4a' },
+        { label: 'Diastolic', data: data.map(function(r){return r.dia}), borderColor: '#378add', backgroundColor: 'rgba(55,138,221,0.08)', tension: 0.3, pointRadius: 3, pointBackgroundColor: '#378add' }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } } },
+      scales: {
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+        y: { ticks: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' }, suggestedMin: 60, suggestedMax: 180 }
+      }
+    }
+  });
+}
+
+function renderList(data) {
+  var list = document.getElementById('records-list');
+  if (!data.length) {
+    list.innerHTML = '<div class="empty-state">ยังไม่มีข้อมูลในช่วงเวลานี้</div>';
+    return;
+  }
+  var html = '';
+  [].concat(data).reverse().forEach(function(r) {
+    var st = getStatus(r.sys, r.dia);
+    var d = new Date(r.dt);
+    var dateStr = d.getDate()+'/'+(d.getMonth()+1)+'/'+(d.getFullYear()+543)+' '+(d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes();
+    html += '<div class="record-item">' +
+      '<div class="record-dot ' + st.dot + '"></div>' +
+      '<div class="record-info">' +
+        '<div class="record-bp">' + r.sys + '/' + r.dia + ' <span style="font-size:13px;color:#8e8e93">mmHg</span></div>' +
+        '<div class="record-dt">' + dateStr + '</div>' +
+      '</div>' +
+      (r.hr ? '<div class="record-hr"><span class="heart-icon">♥</span>' + r.hr + ' bpm</div>' : '') +
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+// ─── Settings ──────────────────────────────────────────────
+function loadSettings() {
+  document.getElementById('sheet-id').value = config.sheetId || '';
+  document.getElementById('api-key').value = config.apiKey || '';
+}
+
+function saveSettings() {
+  var sheetId = document.getElementById('sheet-id').value.trim();
+  var apiKey = document.getElementById('api-key').value.trim();
+  config = { sheetId: sheetId, apiKey: apiKey };
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  showMsg('settings-msg', 'บันทึกการตั้งค่าแล้ว ✓', 'ok');
+}
+
+// ─── Utils ─────────────────────────────────────────────────
+function showMsg(id, text, type) {
+  var el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'msg ' + type;
+  setTimeout(function() { el.textContent = ''; }, 3000);
+}
+</script>
+</body>
+</html>
