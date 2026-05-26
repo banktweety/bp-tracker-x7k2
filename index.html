@@ -394,13 +394,33 @@ function setFilter(days, el) {
 }
 
 function renderHistory() {
-  var cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - currentFilter);
-  var filtered = records.filter(function(r) {
-    return currentFilter >= 9999 || new Date(r.dt) >= cutoff;
+  var list = document.getElementById('records-list');
+  list.innerHTML = '<div class="empty-state">กำลังโหลดข้อมูลจาก Google Sheets...</div>';
+  
+  fetch('https://script.google.com/macros/s/AKfycbxubp9iHOKVACrJaCVQu4r5TrsdtVG_62OC15hM826jj7TBXV2LrKYSaGa2uvpLCBst3Q/exec')
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.result !== 'ok') throw new Error('API error');
+    var sheetRecords = data.data.map(function(r) {
+      // parse date d/m/y -> ISO
+      var parts = String(r.date).split('/');
+      var day = parts[0], month = parts[1], year = parts[2];
+      if (year) year = String(parseInt(year) - 543);
+      var dt = (year||'2026') + '-' + (month&&month.length<2?'0'+month:month||'01') + '-' + (day&&day.length<2?'0'+day:day||'01') + 'T' + (r.time||'00:00');
+      return { dt: dt, sys: r.sys, dia: r.dia, hr: r.hr, status: r.status };
+    });
+    
+    var cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - currentFilter);
+    var filtered = sheetRecords.filter(function(r) {
+      return currentFilter >= 9999 || new Date(r.dt) >= cutoff;
+    });
+    renderChart(filtered);
+    renderList(filtered);
+  })
+  .catch(function(err) {
+    list.innerHTML = '<div class="empty-state">โหลดข้อมูลไม่สำเร็จ: ' + err.message + '</div>';
   });
-  renderChart(filtered);
-  renderList(filtered);
 }
 
 function renderChart(data) {
