@@ -1,4 +1,5 @@
-const CACHE_NAME = 'bp-tracker-v4';
+// Service Worker v5 - bypass all external requests
+const CACHE_NAME = 'bp-tracker-v5';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
@@ -14,11 +15,10 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-  // ข้าม API calls ทั้งหมด — ให้ผ่านตรงๆ ไม่ cache
-  if (e.request.url.includes('googleapis.com') || e.request.url.includes('sheets.googleapis')) {
+  // ให้ทุก request ผ่านตรงๆ ไม่ intercept เลย
+  if (!e.request.url.startsWith(self.location.origin)) {
     return;
   }
-  // ไฟล์ app — ดึงจาก network ก่อน ถ้าไม่ได้ค่อยใช้ cache
   e.respondWith(
     fetch(e.request).catch(function() {
       return caches.match(e.request);
