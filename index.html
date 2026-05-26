@@ -359,16 +359,20 @@ function syncToSheets(record) {
     body: JSON.stringify({ values: [[dateStr, timeStr, record.sys, record.dia, record.hr || '', record.status]] })
   })
   .then(function(r) {
-    if (r.ok) {
-      syncDot.className = 'sync-dot ok';
-      syncText.textContent = 'Sync สำเร็จ ✓';
-    } else {
-      throw new Error('API error');
-    }
+    return r.json().then(function(data) {
+      if (r.ok) {
+        syncDot.className = 'sync-dot ok';
+        syncText.textContent = 'Sync สำเร็จ ✓';
+      } else {
+        syncDot.className = 'sync-dot err';
+        var msg = (data.error && data.error.message) ? data.error.message : 'error ' + r.status;
+        syncText.textContent = 'Error: ' + msg;
+      }
+    });
   })
-  .catch(function() {
+  .catch(function(err) {
     syncDot.className = 'sync-dot err';
-    syncText.textContent = 'Sync ไม่สำเร็จ (ตรวจสอบ API Key)';
+    syncText.textContent = 'Sync ไม่สำเร็จ: ' + (err.message || 'unknown');
   });
 }
 
