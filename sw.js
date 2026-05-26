@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bp-tracker-v1';
+const CACHE_NAME = 'bp-tracker-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -11,12 +11,25 @@ self.addEventListener('install', function(e) {
       return cache.addAll(ASSETS);
     })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(key) { return key !== CACHE_NAME; })
+            .map(function(key) { return caches.delete(key); })
+      );
+    })
+  );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', function(e) {
   e.respondWith(
-    caches.match(e.request).then(function(response) {
-      return response || fetch(e.request);
+    fetch(e.request).catch(function() {
+      return caches.match(e.request);
     })
   );
 });
